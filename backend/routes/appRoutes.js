@@ -16,8 +16,6 @@ module.exports = app => {
             username: req.body.username,
             email: req.body.email,
             password: hash,
-            money: 100.0,
-            role: false,
             google: false
         });
         res.send("create Success")
@@ -27,7 +25,7 @@ module.exports = app => {
         let data = req.body;
         users
             .findAll({
-                attributes: ["id", "email", "password", "role"],
+                attributes: ["id", "email", "password"],
                 where: { email: data.email }
             })
             .then(prom => {
@@ -43,7 +41,6 @@ module.exports = app => {
                             key.tokenKey
                         ),
                         validity: true,
-                        role: prom[0].role,
                         uid: prom[0].id
                     };
                 } else {
@@ -64,7 +61,6 @@ module.exports = app => {
             id: uid,
             email: req.body.email,
             password: req.body.token,
-            money: 100.0,
             role: false,
             google: true,
         });
@@ -78,7 +74,6 @@ module.exports = app => {
                 key.tokenKey
             ),
             validity: true,
-            role: false,
             google: true,
             uid: uid
         };
@@ -87,5 +82,8 @@ module.exports = app => {
         res.send(token)
     })
 
+    app.get("/users", async (req, res) => {
+        users.findAll().then(resp => res.send(resp))
+    })
 
 }
