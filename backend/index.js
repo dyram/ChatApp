@@ -15,7 +15,8 @@ io.on('connection', (socket) => {
 
     socket.on('new_message', (data) => {
         //broadcast the new message
-        io.sockets.emit('new_message', { message: data.message, username: socket.username, color: socket.color });
+        io.sockets.emit('new_message', data);
+        console.log(data)
     })
 })
 
