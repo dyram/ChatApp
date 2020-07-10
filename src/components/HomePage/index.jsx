@@ -23,6 +23,8 @@ import FormControl from "@material-ui/core/FormControl";
 import InputLabel from "@material-ui/core/InputLabel";
 import MenuItem from "@material-ui/core/MenuItem";
 
+import red from "@material-ui/core/colors/red";
+
 import Axios from "axios";
 
 import io from "socket.io-client";
@@ -412,10 +414,14 @@ const HomePage = () => {
                   </Paper>
                 </DialogContent>
                 <DialogActions>
-                  <Button onClick={handleClose} color="primary">
+                  <Button onClick={handleClose} color="secondary">
                     Cancel
                   </Button>
-                  <Button onClick={addGroup} color="secondary">
+                  <Button
+                    onClick={addGroup}
+                    variant="contained"
+                    color="primary"
+                  >
                     Create Group
                   </Button>
                 </DialogActions>
