@@ -10,6 +10,7 @@ module.exports = app => {
     const messages = require("../models").Messages;
     const groups = require("../models").Groups;
     const groupUsers = require("../models").GroupUsers;
+    const groupMessages = require("../models").GroupMessages;
 
     app.get("/", (req, res) => {
         res.send("Working Fine!!");
@@ -100,8 +101,19 @@ module.exports = app => {
         messages.findAll({ where: { to: { [Op.or]: [req.body.to, req.body.from] }, from: { [Op.or]: [req.body.from, req.body.to] } } }).then(resp => res.send(resp))
     })
 
+    app.post("/specGroupMessage", async (req, res) => {
+        // groupMessages.findAll({ where: { GroupId: { [Op.or]: [req.body.GroupId, req.body.from] }, from: { [Op.or]: [req.body.from, req.body.GroupId] } } }).then(resp => res.send(resp))
+        groupMessages.findAll({ where: { GroupId: req.body.GroupId } }).then(resp => res.send(resp))
+    })
+
     app.post("/specGroups", async (req, res) => {
-        console.log(req.body)
+        let group = await groupUsers.findAll({ where: { UserId: req.body.UserId } })
+        let numArr = []
+        group.map(async obj => {
+            numArr.push(obj.GroupId)
+        })
+        let resp = await groups.findAll({ where: { id: { [Op.or]: numArr } } })
+        res.send(resp)
     })
 
 }

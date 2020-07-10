@@ -45,8 +45,7 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: theme.palette.background.paper,
   },
   textfield: {
-    width: "100%",
-    marginTop: "auto",
+    width: "150%",
   },
   papers: {
     display: "flex",
@@ -83,6 +82,9 @@ const HomePage = () => {
   const [messages, setMessages] = useState([]);
 
   const [groups, setGroups] = useState([]);
+
+  const [toGroupId, setToGroupId] = useState("");
+  const [isGroupMessage, setIsGroupMessage] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
 
@@ -134,12 +136,29 @@ const HomePage = () => {
 
       socket.on("new_group_created", (data) => {
         console.log("NEW Grp", data);
-        // setMessages((messages) => [...messages, data]);
+        setGroups((groups) => [...groups, data]);
+      });
+
+      socket.on("new_group_message_server", (data) => {
+        console.log("NEW Grp message", data);
+        setMessages((messages) => [...messages, data]);
       });
     } else {
       setShowLogin(false);
     }
   }, []);
+
+  const getSpecGroupsMessage = (gid) => {
+    Axios.post("http://localhost:4000/specGroupMessage", {
+      from: currId,
+      GroupId: gid,
+    }).then((res) => {
+      console.log("SPEC MSG GROUPS GET", res);
+      if (res.status === 200) {
+        setMessages([...res.data]);
+      }
+    });
+  };
 
   const getUsers = () => {
     Axios.get("http://localhost:4000/users").then((res) => {
@@ -187,20 +206,30 @@ const HomePage = () => {
   };
 
   const sendMessage = () => {
-    socket.emit("new_message", {
-      text: message,
-      from: currId,
-      // toRecv: reciever,
-      to: recId,
-    });
-    setMessage("");
+    if (!isGroupMessage) {
+      socket.emit("new_message", {
+        text: message,
+        from: currId,
+        // toRecv: reciever,
+        to: recId,
+      });
+      setMessage("");
+    } else {
+      socket.emit("new_group_message", {
+        text: message,
+        from: currId,
+        // toRecv: reciever,
+        GroupId: toGroupId,
+      });
+      setMessage("");
+    }
   };
 
   const addGroup = () => {
-    let data = { gName, tags };
     socket.emit("new_group", {
       name: gName,
       users: tags,
+      createdAt: new Date(),
     });
     handleClose();
   };
@@ -245,6 +274,7 @@ const HomePage = () => {
                             setReciever(obj.username);
                             setRecId(obj.id);
                             getSpecMessages(obj.id);
+                            setIsGroupMessage(false);
                           }}
                         >
                           <ListItemAvatar>
@@ -275,11 +305,56 @@ const HomePage = () => {
                   </div>
                 ))}
               </List>
-              <Typography variant="overline">&nbsp;Your Groups</Typography>
-              &nbsp;&nbsp;&nbsp;&nbsp;
-              <Button onClick={handleClickOpen} variant="contained">
-                Create New Group
-              </Button>
+              <List className={classes.list}>
+                <Grid container spacing={0}>
+                  <Grid item xs={6}>
+                    <Typography variant="overline">
+                      &nbsp;Your Groups
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Button onClick={handleClickOpen} variant="contained">
+                      Create New Group
+                    </Button>
+                  </Grid>
+                </Grid>
+                {groups.map((obj) => (
+                  <div>
+                    <div>
+                      <ListItem
+                        onClick={(e) => {
+                          setReciever(obj.name);
+                          setToGroupId(obj.id);
+                          getSpecGroupsMessage(obj.id);
+                          setIsGroupMessage(true);
+                        }}
+                      >
+                        <ListItemAvatar>
+                          <Avatar>{obj.name[0].toUpperCase()}</Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <React.Fragment>
+                              <Typography variant="button">
+                                {obj.name}
+                              </Typography>
+                            </React.Fragment>
+                          }
+                          secondary={
+                            <React.Fragment>
+                              <Typography variant="body2" color="disabled">
+                                Created at :{" "}
+                                {new Date(obj.createdAt).toLocaleDateString()}
+                              </Typography>
+                            </React.Fragment>
+                          }
+                        />
+                      </ListItem>
+                      <hr />
+                    </div>
+                  </div>
+                ))}
+              </List>
               <Dialog
                 open={addOpen}
                 onClose={handleClose}
@@ -355,7 +430,8 @@ const HomePage = () => {
                   </Typography>
                 </Toolbar>
               </AppBar>
-              <div style={{ padding: "1%", height: "70vh" }}>
+              {/* <div style={{ padding: "1%", height: "100vh" }}> */}
+              <div>
                 {messages.map((obj) => (
                   <div
                     style={{
@@ -382,16 +458,15 @@ const HomePage = () => {
                   </div>
                 ))}
               </div>
-              <Grid
-                position="static"
+              {/* <Grid
                 container
                 spacing={2}
-                style={{ alignItems: "center" }}
+                style={{ alignItems: "center", position: "fixed", bottom: 0 }}
               >
                 <Grid item xs={10}>
                   <TextField
                     className={classes.textfield}
-                    position="absolute"
+                    // position="absolute"
                     id="filled-basic"
                     label="Send a Message"
                     variant="filled"
@@ -406,7 +481,34 @@ const HomePage = () => {
                     Send
                   </Button>
                 </Grid>
-              </Grid>
+              </Grid> */}
+              <div
+                style={{
+                  position: "fixed",
+                  bottom: 0,
+                }}
+              >
+                <Grid container>
+                  <Grid item xs={6}>
+                    <TextField
+                      className={classes.textfield}
+                      // position="absolute"
+                      id="filled-basic"
+                      label="Send a Message"
+                      variant="filled"
+                      value={message}
+                      onChange={(e) => {
+                        setMessage(e.target.value);
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Button onClick={sendMessage} color="primary">
+                      Send
+                    </Button>
+                  </Grid>
+                </Grid>
+              </div>
             </Grid>
           </Grid>
         </div>

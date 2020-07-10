@@ -38,6 +38,14 @@ io.on('connection', (socket) => {
         console.log(data)
         io.sockets.emit('new_group_created', data);
     })
+
+    socket.on('new_group_message', async (data) => {
+        console.log(data)
+        // socket.broadcast.to(data.to).emit("new_group_message_server", data)
+        // socket.broadcast.emit("new_group_message_server", data)
+        await models.GroupMessages.create(data);
+        io.sockets.emit("new_group_message_server", data)
+    })
 })
 
 app.use(express.static(__dirname + '/node_modules'));
