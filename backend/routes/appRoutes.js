@@ -3,7 +3,13 @@ module.exports = app => {
     const jwt = require("jsonwebtoken");
     const key = require("../config/key.json");
 
+    const Sequelize = require("sequelize");
+    const Op = Sequelize.Op
+
     const users = require("../models").Users;
+    const messages = require("../models").Messages;
+    const groups = require("../models").Groups;
+    const groupUsers = require("../models").GroupUsers;
 
     app.get("/", (req, res) => {
         res.send("Working Fine!!");
@@ -84,6 +90,18 @@ module.exports = app => {
 
     app.get("/users", async (req, res) => {
         users.findAll().then(resp => res.send(resp))
+    })
+
+    app.get("/messages", async (req, res) => {
+        messages.findAll().then(resp => res.send(resp))
+    })
+
+    app.post("/specMessage", async (req, res) => {
+        messages.findAll({ where: { to: { [Op.or]: [req.body.to, req.body.from] }, from: { [Op.or]: [req.body.from, req.body.to] } } }).then(resp => res.send(resp))
+    })
+
+    app.post("/specGroups", async (req, res) => {
+        console.log(req.body)
     })
 
 }

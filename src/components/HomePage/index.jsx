@@ -12,6 +12,16 @@ import Avatar from "@material-ui/core/Avatar";
 import Grid from "@material-ui/core/Grid";
 import TextField from "@material-ui/core/TextField";
 import Paper from "@material-ui/core/Paper";
+import Dialog from "@material-ui/core/Dialog";
+import DialogActions from "@material-ui/core/DialogActions";
+import DialogContent from "@material-ui/core/DialogContent";
+import DialogContentText from "@material-ui/core/DialogContentText";
+import DialogTitle from "@material-ui/core/DialogTitle";
+import Chip from "@material-ui/core/Chip";
+import Select from "@material-ui/core/Select";
+import FormControl from "@material-ui/core/FormControl";
+import InputLabel from "@material-ui/core/InputLabel";
+import MenuItem from "@material-ui/core/MenuItem";
 
 import Axios from "axios";
 
@@ -38,6 +48,24 @@ const useStyles = makeStyles((theme) => ({
     width: "100%",
     marginTop: "auto",
   },
+  papers: {
+    display: "flex",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    listStyle: "none",
+    padding: theme.spacing(0.5),
+    margin: 0,
+  },
+  chip: {
+    margin: theme.spacing(0.5),
+  },
+  formControl: {
+    // margin: theme.spacing(1),
+    minWidth: 120,
+  },
+  selectEmpty: {
+    marginTop: theme.spacing(2),
+  },
 }));
 
 const HomePage = () => {
@@ -54,6 +82,42 @@ const HomePage = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
+  const [groups, setGroups] = useState([]);
+
+  const [addOpen, setAddOpen] = useState(false);
+
+  const [gName, setGName] = useState("");
+  const [tags, setTags] = useState([]);
+  const [tag, setTag] = useState("");
+
+  const handleClickOpen = () => {
+    setAddOpen(true);
+  };
+
+  const handleClose = () => {
+    setAddOpen(false);
+    setGName("");
+    setTag("");
+    setTags([]);
+  };
+
+  const handleDelete = (chipToDelete) => () => {
+    setTags((chips) => chips.filter((chip) => chip.key !== chipToDelete.key));
+  };
+
+  const handleUser = (event) => {
+    setTags((tags) => [
+      ...tags,
+      {
+        key: event.target.value,
+        label:
+          users[users.findIndex((obj) => obj.id === event.target.value)]
+            .username,
+      },
+    ]);
+    setTag("");
+  };
+
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem("userToken"));
     if (data != null) {
@@ -61,8 +125,16 @@ const HomePage = () => {
       setCurrid(data.uid);
       setShowLogin(data.validity);
       getUsers();
+      getSpecGroups(data.uid);
+
       socket.on("new_message", (data) => {
-        console.log("NEW MESSAGE", data);
+        console.log("NEW MSG", data);
+        setMessages((messages) => [...messages, data]);
+      });
+
+      socket.on("new_group_created", (data) => {
+        console.log("NEW Grp", data);
+        // setMessages((messages) => [...messages, data]);
       });
     } else {
       setShowLogin(false);
@@ -74,6 +146,29 @@ const HomePage = () => {
       console.log("USERS GET", res);
       if (res.status === 200) {
         setUsers([...res.data]);
+      }
+    });
+  };
+
+  const getSpecMessages = (toId) => {
+    Axios.post("http://localhost:4000/specMessage", {
+      from: currId,
+      to: toId,
+    }).then((res) => {
+      console.log("SPEC MSG GET", res);
+      if (res.status === 200) {
+        setMessages([...res.data]);
+      }
+    });
+  };
+
+  const getSpecGroups = (UserId) => {
+    Axios.post("http://localhost:4000/specGroups", {
+      UserId,
+    }).then((res) => {
+      console.log("SPEC GROUPS GET", res);
+      if (res.status === 200) {
+        setGroups([...res.data]);
       }
     });
   };
@@ -93,12 +188,21 @@ const HomePage = () => {
 
   const sendMessage = () => {
     socket.emit("new_message", {
-      message,
+      text: message,
       from: currId,
-      to: reciever,
-      toId: recId,
+      // toRecv: reciever,
+      to: recId,
     });
     setMessage("");
+  };
+
+  const addGroup = () => {
+    let data = { gName, tags };
+    socket.emit("new_group", {
+      name: gName,
+      users: tags,
+    });
+    handleClose();
   };
 
   return (
@@ -140,6 +244,7 @@ const HomePage = () => {
                           onClick={(e) => {
                             setReciever(obj.username);
                             setRecId(obj.id);
+                            getSpecMessages(obj.id);
                           }}
                         >
                           <ListItemAvatar>
@@ -170,7 +275,78 @@ const HomePage = () => {
                   </div>
                 ))}
               </List>
+              <Typography variant="overline">&nbsp;Your Groups</Typography>
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <Button onClick={handleClickOpen} variant="contained">
+                Create New Group
+              </Button>
+              <Dialog
+                open={addOpen}
+                onClose={handleClose}
+                aria-labelledby="form-dialog-title"
+              >
+                <DialogTitle id="form-dialog-title">
+                  Create new group
+                </DialogTitle>
+                <DialogContent>
+                  <DialogContentText>
+                    Add Users to your new group...
+                  </DialogContentText>
+                  <TextField
+                    autoFocus
+                    margin="dense"
+                    id="name"
+                    label="Group Name"
+                    fullWidth
+                    value={gName}
+                    onChange={(e) => setGName(e.target.value)}
+                  />
+                  <br />
+                  <br />
+                  <FormControl className={classes.formControl}>
+                    <InputLabel id="demo-simple-select-label">
+                      Select User
+                    </InputLabel>
+                    <Select
+                      labelId="to-label"
+                      id="to"
+                      value={tag}
+                      onChange={handleUser}
+                    >
+                      {users.map((obj) => (
+                        <MenuItem key={obj.id} value={obj.id}>
+                          {obj.username} - {obj.email}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <br />
+                  <br />
+                  <Paper component="ul" className={classes.papers}>
+                    {tags.map((data) => {
+                      return (
+                        <li key={data.key}>
+                          <Chip
+                            label={data.label}
+                            onDelete={handleDelete(data)}
+                            className={classes.chip}
+                          />
+                        </li>
+                      );
+                    })}
+                  </Paper>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleClose} color="primary">
+                    Cancel
+                  </Button>
+                  <Button onClick={addGroup} color="secondary">
+                    Create Group
+                  </Button>
+                </DialogActions>
+              </Dialog>
             </Grid>
+
             <Grid item xs={8} style={{ background: "#edf1ff" }}>
               <AppBar position="static">
                 <Toolbar variant="dense">
@@ -180,18 +356,31 @@ const HomePage = () => {
                 </Toolbar>
               </AppBar>
               <div style={{ padding: "1%", height: "70vh" }}>
-                <div>
-                  <Typography variant="button">User</Typography>
-                  <Paper style={{ padding: "1%" }} elevation={3}>
-                    Messages
-                  </Paper>
-                </div>
-                <div>
-                  <Typography variant="button">User</Typography>
-                  <Paper style={{ padding: "1%" }} elevation={3}>
-                    Messages
-                  </Paper>
-                </div>
+                {messages.map((obj) => (
+                  <div
+                    style={{
+                      maxWidth: "30%",
+                      marginLeft: obj.from === currId ? "auto" : 0,
+                    }}
+                  >
+                    <Typography variant="button">
+                      {
+                        users[users.findIndex((ob) => ob.id === obj.from)]
+                          .username
+                      }
+                    </Typography>
+                    <Paper
+                      style={{
+                        padding: "3%",
+                        background: obj.from === currId ? "wheat" : "white",
+                        color: obj.from === currId ? "black" : "black",
+                      }}
+                      elevation={3}
+                    >
+                      {obj.text}
+                    </Paper>
+                  </div>
+                ))}
               </div>
               <Grid
                 position="static"
